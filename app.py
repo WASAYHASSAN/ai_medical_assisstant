@@ -1,12 +1,8 @@
 import streamlit as st
 from PIL import Image
-import fitz  
-import pytesseract
 
 from modules.gemini_engine import load_gemini_pro, contains_critical_alert
 from modules.report_parser import combine_multiple_reports
-
-pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
 # ------------------------
 # Page Setup
@@ -48,18 +44,17 @@ if "report_context" not in st.session_state:
     st.session_state.report_context = ""
 
 # ------------------------
-# OCR Function
+# OCR Function using Gemini
 # ------------------------
 def extract_text(file):
-    text = ""
-    if file.type == "application/pdf":
-        doc = fitz.open(stream=file.read(), filetype="pdf")
-        for page in doc:
-            text += page.get_text()
-    elif file.type.startswith("image/"):
-        image = Image.open(file)
-        text = pytesseract.image_to_string(image)
-    return text
+    model = load_gemini_pro(st.session_state.api_key)
+    file_bytes = file.read()
+    
+    # Build dynamic prompt
+    prompt = f"Extract all readable medical text from this {'PDF' if file.type=='application/pdf' else 'image'} file."
+
+    response = model.generate_content([prompt, file_bytes])
+    return response.text
 
 # ------------------------
 # Process Uploaded Reports
@@ -82,10 +77,10 @@ for msg in st.session_state.messages:
 user_input = st.chat_input("Ask a medical question or describe symptoms...")
 
 if user_input:
-    #user message
+    # user message
     st.session_state.messages.append({"role": "user", "content": user_input})
 
-    #conversation context
+    # build prompt
     full_prompt = "You are a medical doctor.\n\n"
     full_prompt += "The patient has uploaded the following reports:\n"
     full_prompt += st.session_state.report_context + "\n\n"
@@ -96,7 +91,7 @@ if user_input:
         else:
             full_prompt += f"Doctor: {msg['content']}\n"
 
-    #Gemini Pro model
+    # Gemini model
     model = load_gemini_pro(st.session_state.api_key)
 
     with st.chat_message("Doctor"):
@@ -106,6 +101,5 @@ if user_input:
             st.markdown(reply)
             st.session_state.messages.append({"role": "ai", "content": reply})
 
-        #critical alerts
         if contains_critical_alert(reply):
-            st.error("This response may contain **critical alerts**. Please consult a real doctor immediately.")
+            st.error("⚠️ This response may contain **critical alerts**. Please consult a real doctor.")
