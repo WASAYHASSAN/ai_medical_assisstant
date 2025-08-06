@@ -1,4 +1,4 @@
-# 🩺 Medical Report Analyzer Chatbot
+# Medical Report Analyzer Chatbot
 
 A smart, real-time **AI chatbot** that helps users understand and interact with their own **medical reports**. Powered by **Google's Gemini Flash 1.5** and designed with **custom report parsing and prompt engineering**, this system enables natural language conversations with a patient's uploaded medical document.
 
